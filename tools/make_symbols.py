@@ -24,6 +24,11 @@ MAP = {
     "accessibility": ("accessibility_new", 0),
     "lightbulb": ("lightbulb", 1), "toggle": ("toggle_on", 1), "fan": ("mode_fan", 1), "blinds": ("blinds", 1),
     "bolt": ("bolt", 1), "smart_button": ("smart_button", 1),
+    # The Home tab (HomeTab)
+    "shield_ok": ("verified_user", 1), "shield_alert": ("gpp_maybe", 1), "videocam": ("videocam", 1),
+    "thermostat": ("thermostat", 1), "laundry": ("local_laundry_service", 1), "printer": ("print", 1),
+    "smoke": ("detector_smoke", 1), "pets": ("pets", 1), "ceiling_light": ("light", 1), "floor_lamp": ("floor_lamp", 1),
+    "countertops": ("countertops", 1),
 }
 
 

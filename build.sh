@@ -106,6 +106,8 @@ for key in immich_api_key home_assistant_token; do
 done
 # Home Assistant: with an address and entities, Home Settings gets its Home Assistant row; without, no row at all.
 HA=false; [ -n "$(prop home_assistant_url '')" ] && [ -n "$(prop home_assistant_entities '')" ] && HA=true
+# Our build: the Home tab (HomeTab), on Home Assistant's address and token, with its entities in home_tab_*.
+HOME_TAB=false; [ "$(prop home_tab false)" = "true" ] && [ -n "$(prop home_assistant_url '')" ] && HOME_TAB=true
 
 rm -rf out && mkdir -p out/gen/io/freemytv out/classes
 cat > out/gen/io/freemytv/Config.java <<EOF
@@ -133,6 +135,17 @@ final class Config {
     static final String HA_URL = "$(prop home_assistant_url '')";
     static final String HA_ENTITIES = "$(prop home_assistant_entities '')";
     static final boolean HOME_ASSISTANT = $HA;   // home_assistant_url and _entities set: Home Settings shows its row
+    static final boolean HOME_TAB = $HOME_TAB;   // our build: the Home tab, after Shows
+    static final String HOME_TAB_LIGHTS = "$(prop home_tab_lights '')";
+    static final String HOME_TAB_LOCK = "$(prop home_tab_lock '')";
+    static final String HOME_TAB_GARAGE = "$(prop home_tab_garage '')";
+    static final String HOME_TAB_SMOKE = "$(prop home_tab_smoke '')";
+    static final String HOME_TAB_CLIMATE = "$(prop home_tab_climate '')";
+    static final String HOME_TAB_CAMERAS = "$(prop home_tab_cameras '')";
+    static final String HOME_TAB_WASHER = "$(prop home_tab_washer '')";
+    static final String HOME_TAB_PRINTERS = "$(prop home_tab_printers '')";
+    static final String HOME_TAB_CRATE = "$(prop home_tab_crate '')";
+    static final String KEEP_APPS = "$(prop keep_apps '')";   // our build: packages the switch never turns off
     static final boolean DISABLE_ASSISTANT = $ASSIST;
     static final boolean SHOW_CRYPTO = $CRYPTO;
     static final boolean HIDE_ANIMATION = $ANIMATION;

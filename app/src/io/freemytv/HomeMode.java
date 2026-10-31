@@ -889,6 +889,9 @@ final class HomeMode {
                 }
                 for (String pkg : sorted(wanted)) if (!order.contains(pkg)) order.add(pkg);
                 Set<String> disabled = new HashSet<>(stringList(s, "disabled"));
+                wanted.removeAll(KEEP);     // our build: switched off before keep_apps named them, left on now
+                order.removeAll(KEEP);
+                disabled.removeAll(KEEP);
                 Set<String> gone = new HashSet<>(disabled);
                 offTheList(adb, disabled, disabledNow, homePkg);
                 gone.removeAll(disabled);
@@ -1022,7 +1025,14 @@ final class HomeMode {
         if (Config.SCREENSAVER && dreamPkg != null && !dreamPkg.equals(PKG) && !dreamPkg.equals(homePkg)) out.add(dreamPkg);
         out.addAll(Arrays.asList(DEBLOAT));
         if (Config.DISABLE_ASSISTANT) out.addAll(Arrays.asList(ASSISTANT));
+        out.removeAll(KEEP);   // our build
         return out;
+    }
+
+    /** Our build: keep_apps in config.properties stay on, even when they're on the lists above or in a switch's record. */
+    private static final Set<String> KEEP = new HashSet<>();
+    static {
+        for (String keep : Config.KEEP_APPS.split(",")) if (!keep.trim().isEmpty()) KEEP.add(keep.trim());
     }
 
     /** The home screen in use now ("package/activity"): the HOME role holder, among the TV's home screens. */

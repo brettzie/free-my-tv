@@ -319,7 +319,7 @@ final class HomeAssistant {
     }
 
     /** Read at each round, so a token sent (or taken away) while the home screen runs counts at once. Never logged. */
-    private static String token(Context c) throws IOException {
+    static String token(Context c) throws IOException {
         String t = Secrets.get(c, Secrets.HOME_ASSISTANT_TOKEN);
         tokenThere = !t.isEmpty();
         if (t.isEmpty()) throw new IOException("no token: send it with tools/send_key.py <IP> home_assistant_token");
@@ -388,13 +388,13 @@ final class HomeAssistant {
         return url;
     }
 
-    private static final class NotFound extends IOException {
+    static final class NotFound extends IOException {
         NotFound() {
             super("HTTP 404");
         }
     }
 
-    private static String request(String token, String method, String path, String body) throws IOException {
+    static String request(String token, String method, String path, String body) throws IOException {
         HttpURLConnection c = (HttpURLConnection) new URL(SERVER + path).openConnection();
         // A redirect would carry the token to wherever it points, and past lan_server's check: none is followed.
         c.setInstanceFollowRedirects(false);
