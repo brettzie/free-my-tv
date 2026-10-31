@@ -1,7 +1,12 @@
 package io.freemytv;
 
 import android.content.Context;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapShader;
 import android.graphics.Canvas;
+import android.graphics.Matrix;
+import android.net.Uri;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RadialGradient;
@@ -23,7 +28,7 @@ final class HomeTab {
     private static final float LEFT = 80, MID = 1120, RIGHT_X = 1160, RIGHT = 1840, TOP = 176, BOTTOM = 780;
     private static final float BANNER_H = 120, GAP = 20, WEATHER_H = 230, CARD_R = 22, TILE_R = 20;
     private static final float ROW_H = 62, ROW_GAP = 6, LIGHTS_FIRST = 80;
-    private static final int TILES = 6, COLUMNS = 3;
+    private static final int TILES = 6, COLUMNS = 3, CRATE = 5;
     private static final int CARD = 0x14FFFFFF, CARD_LINE = 0x10FFFFFF, CARD_FOCUS = 0x2EFFFFFF, WHITE = 0xFFF5F5F7,
             DIM = 0xA6FFFFFF, FAINT = 0x80FFFFFF;
     /** Tile and light symbols by position (the tiles' own come with their status). */
@@ -47,6 +52,14 @@ final class HomeTab {
     private TextPaint bannerTitle, bannerSub, tileTitle, tileSub, rowName, header, headerCount, date, clock, temp, cond, updated;
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG), line = new Paint(Paint.ANTI_ALIAS_FLAG);
     private Shader skyBase, skyBlue, skyPurple;
+    // The crate tile's camera picture (CrateCam), drawn through a shader made once per picture.
+    private final CrateCam cam;
+    private BitmapShader camShader;
+    private Bitmap camShaderFor;
+    private final Matrix camMatrix = new Matrix();
+    private Shader camShade;
+    private TextPaint badge;
+    private final RectF badgeBox = new RectF();
     private int skyH;
     // Texts cut to their boxes once per snapshot, never while drawing.
     private String bannerTitleText = "", bannerSubText = "", headerText = "", countText = "";
@@ -65,6 +78,7 @@ final class HomeTab {
     HomeTab(Context context, Runnable changed) {
         this.context = context;
         this.changed = changed;
+        cam = new CrateCam(context, changed);
         for (int i = 0; i < focus.length; i++) focus[i] = new Spring(0.3f, 0.82f, 0);
         for (int i = 0; i < tiles.length; i++) tiles[i] = new RectF();
         for (int i = 0; i < rows.length; i++) rows[i] = new RectF();
@@ -78,6 +92,7 @@ final class HomeTab {
         shown = on;
         handler.removeCallbacks(tick);
         if (on) tick.run();
+        cam.run(on);
     }
 
     /** New states, or a new minute: the texts again. */
@@ -129,6 +144,12 @@ final class HomeTab {
         Symbols.warm(context, "shield_alert", 40 * k);
         Symbols.warmWeather(context, 40 * k);
         skyBase = null;
+        RectF ct = tiles[CRATE];
+        cam.size(Math.round(ct.width() * 1.05f), Math.round(ct.height() * 1.05f));
+        camShade = new LinearGradient(0, ct.top + ct.height() * 0.35f, 0, ct.bottom, 0x00080A12, 0xD9080A12, Shader.TileMode.CLAMP);
+        camShaderFor = null;
+        badge = paint(Ui.semibold, 18, WHITE);
+        Symbols.warm(context, "videocam", 18 * k);
         cutTexts();
     }
 
@@ -237,6 +258,11 @@ final class HomeTab {
         float f = Ui.clamp(focus[i].value), s = 1 + 0.05f * focus[i].value;
         c.save();
         c.scale(s, s, r.centerX(), r.centerY());
+        if (i == CRATE && cam.frame != null) {
+            drawCamera(c, r, f);
+            c.restore();
+            return;
+        }
         card(c, r, TILE_R * k, blend(CARD, CARD_FOCUS, f));
         if (f > 0.01f) ring(c, r, TILE_R * k, f);
         fill.setColor(l.color);
@@ -245,6 +271,40 @@ final class HomeTab {
         c.drawText(tileTitles[i], r.left + 22 * k, r.bottom - 52 * k, tileTitle);
         c.drawText(tileSubs[i], r.left + 22 * k, r.bottom - 20 * k, tileSub);
         c.restore();
+    }
+
+    /** The crate camera's last picture filling the tile, its status over a dark fade, "Live" or "Offline" at the top. */
+    private void drawCamera(Canvas c, RectF r, float f) {
+        Bitmap b = cam.frame;
+        if (camShaderFor != b) {   // a new picture: a new shader, cropped to fill the tile
+            camShaderFor = b;
+            camShader = new BitmapShader(b, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+            float scale = Math.max(r.width() / b.getWidth(), r.height() / b.getHeight());
+            camMatrix.setScale(scale, scale);
+            camMatrix.postTranslate(r.centerX() - b.getWidth() * scale / 2, r.centerY() - b.getHeight() * scale / 2);
+            camShader.setLocalMatrix(camMatrix);
+        }
+        boolean stale = System.currentTimeMillis() - cam.frameAt > CrateCam.STALE_MS;
+        float radius = TILE_R * k;
+        fill.setShader(camShader);
+        fill.setAlpha(stale ? 110 : 255);
+        c.drawRoundRect(r, radius, radius, fill);
+        fill.setShader(camShade);
+        fill.setAlpha(255);
+        c.drawRoundRect(r, radius, radius, fill);
+        fill.setShader(null);
+        if (f > 0.01f) ring(c, r, radius, f);
+        String text = stale ? "Offline" : "Live";
+        float pad = 12 * k, icon = 26 * k, x = r.left + 18 * k, top = r.top + 18 * k;
+        badgeBox.set(x, top, x + pad + icon + badge.measureText(text) + pad, top + 36 * k);
+        fill.setColor(0x990A0C14);
+        c.drawRoundRect(badgeBox, badgeBox.height() / 2, badgeBox.height() / 2, fill);
+        Symbols.draw(context, c, "videocam", x + pad + icon / 2 - 2 * k, badgeBox.centerY(), 18 * k, stale ? HomeStatus.AMBER : HomeStatus.PURPLE);
+        c.drawText(text, x + pad + icon, badgeBox.centerY() + Ui.halfCap(badge), badge);
+        fill.setColor(HomeStatus.PURPLE);
+        c.drawCircle(r.right - 31 * k, r.top + 33 * k, 7 * k, fill);
+        c.drawText(tileTitles[CRATE], r.left + 22 * k, r.bottom - 52 * k, tileTitle);
+        c.drawText(tileSubs[CRATE], r.left + 22 * k, r.bottom - 20 * k, tileSub);
     }
 
     private void ring(Canvas c, RectF r, float radius, float f) {
@@ -377,6 +437,15 @@ final class HomeTab {
 
     /** OK: a light row switches; the tiles are only read. */
     void ok(Click click) {
+        if (index == CRATE && !Config.HOME_TAB_CRATE_LINK.isEmpty()) {   // the crate camera, live, in tinyCam
+            click.open();
+            try {
+                context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Config.HOME_TAB_CRATE_LINK)));
+            } catch (RuntimeException e) {
+                AppLog.w("home tab: couldn't open " + Config.HOME_TAB_CRATE_LINK + ": " + e);
+            }
+            return;
+        }
         if (index < TILES) return;
         HomeStatus.Light l = index - TILES < snap.lights.size() ? snap.lights.get(index - TILES) : null;
         if (l == null || l.unavailable) return;

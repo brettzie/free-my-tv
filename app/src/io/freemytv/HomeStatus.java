@@ -82,7 +82,7 @@ final class HomeStatus {
     /** Everything the tab draws, made on the main thread after a read and once a minute (the "12 min ago"s). */
     static final class Snapshot {
         final Line banner = new Line();
-        /** Cameras, Inside, Washer; Printers, Smoke & CO, Puppy crate. */
+        /** Cameras, Inside, Washer; Printers, Smoke & CO, Crate Cam. */
         final Line[] tiles = new Line[6];
         final List<Light> lights = new ArrayList<>();
         int lightsOn;
@@ -205,14 +205,13 @@ final class HomeStatus {
         washer(s.tiles[2], now);
         printers(s.tiles[3]);
         smokeTile(s.tiles[4]);
-        crate(s.tiles[5]);
+        crate(s.tiles[5], now);
         if (readAt == 0) {   // nothing read yet: no "0 alarms clear" or "Unavailable" that isn't true
             for (Line t : s.tiles) {
                 t.sub = "";
                 t.color = GRAY;
             }
             s.tiles[1].title = "Inside";
-            s.tiles[5].title = "Puppy crate";
         }
         for (Group g : LIGHTS) {
             Light l = new Light(g);
@@ -362,21 +361,26 @@ final class HomeStatus {
         }
     }
 
-    /** home_tab_crate: occupied + last seen (a text sensor). */
-    private static void crate(Line l) {
+    /** home_tab_crate: its camera (shown in the tile, CrateCam) and a motion sensor: when it last saw motion. */
+    private static void crate(Line l, long now) {
         l.symbol = "pets";
+        l.color = PURPLE;
         Group g = CRATE.isEmpty() ? null : CRATE.get(0);
-        State in = g == null ? null : STATES.get(g.entities[0]);
-        if (in != null && in.state.equals("on")) {
-            l.color = PURPLE;
-            l.title = "Puppy in crate";
-            l.sub = fmt("Since {time}", "time", Ui.time(in.changed));
-        } else {
-            l.color = GRAY;
-            l.title = "Crate empty";
-            State seen = g == null || g.entities.length < 2 ? null : STATES.get(g.entities[1]);
-            l.sub = seen == null || seen.absent || offline(seen.state) ? "" : seen.state;
+        l.title = g == null ? "Crate Cam" : g.name;
+        State motion = null;
+        if (g != null) {
+            for (String e : g.entities) if (e.startsWith("binary_sensor.")) motion = STATES.get(e);
         }
+        if (motion == null || motion.absent || offline(motion.state)) l.sub = "";
+        else if (motion.state.equals("on")) l.sub = "Motion now";
+        else l.sub = motion.changed == 0 ? "No motion yet" : fmt("Motion {ago}", "ago", ago(motion.changed, now));
+    }
+
+    /** The crate tile's camera (the first camera.* in home_tab_crate), or "" without one. */
+    static String crateCamera() {
+        if (CRATE.isEmpty()) return "";
+        for (String e : CRATE.get(0).entities) if (e.startsWith("camera.")) return e;
+        return "";
     }
 
     private static final class Smoke {

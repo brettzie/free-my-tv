@@ -145,6 +145,7 @@ final class Config {
     static final String HOME_TAB_WASHER = "$(prop home_tab_washer '')";
     static final String HOME_TAB_PRINTERS = "$(prop home_tab_printers '')";
     static final String HOME_TAB_CRATE = "$(prop home_tab_crate '')";
+    static final String HOME_TAB_CRATE_LINK = "$(prop home_tab_crate_link '')";   // OK on the crate tile opens it
     static final String KEEP_APPS = "$(prop keep_apps '')";   // our build: packages the switch never turns off
     static final boolean DISABLE_ASSISTANT = $ASSIST;
     static final boolean SHOW_CRYPTO = $CRYPTO;

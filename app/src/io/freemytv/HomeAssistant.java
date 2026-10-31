@@ -49,7 +49,7 @@ final class HomeAssistant {
     static final List<String> SAFE_COVERS = Collections.unmodifiableList(
             Arrays.asList("awning", "blind", "curtain", "shade", "shutter"));
 
-    private static final String SERVER = trimSlash(Config.HA_URL.trim());
+    static final String SERVER = trimSlash(Config.HA_URL.trim());
 
     /** One entity from home_assistant_entities. Its name and state change as the server answers. */
     static final class Control {
